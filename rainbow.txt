@@ -4,6 +4,7 @@ Voilte
 Indigo
 Blue
 Green
+Yellow
 Orange
 Red
 
