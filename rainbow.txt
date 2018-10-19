@@ -2,6 +2,7 @@ Rainbow has many colours
 
 Voilte
 Indigo
+Blue
 Green
 Orange
 Red
