@@ -6,6 +6,7 @@ Blue
 Green
 Yellow
 Earth
+Home
 recycle
 Orange
 Unicorn
