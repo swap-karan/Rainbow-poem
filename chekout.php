@@ -264,7 +264,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                         <div class="row">
                             <div class="col-6">
                                 <div class="form-group m-0">
-                                    <input type="text" class="form-control" id="coupon_code" placeholder="Code / Gift Card">
+                                    <input type="text" class="form-control cc_text_step2" id="coupon_code" placeholder="Code / Gift Card">
                                 </div>
                             </div>
                             <div class="col-6 pl-0">
@@ -1097,7 +1097,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                     <h6 id="customer-orderId">Order ID: 1876 </h6>
                 </div>
                 <div class="order-detail">
-                    <p>Please allow 1-3 days for your order to ship. Each plant is handpicked by our team and we like to
+                    <p>Please allow 2-4 days for your order to ship. Each plant is handpicked by our team and we like to
                         ensure that we're getting you the fullest and freshest plant possible. We'll be sure to send
                         you an email when your plant ships.
                     </p>
@@ -1267,6 +1267,10 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                             <td>Subtotal</td>
                             <td class="text-right">${{ number_format($totals['total_segments'][0]['value'],2) }}</td>
                         </tr>
+                        <tr class="tax" style="display:none">
+                                <td>Tax</td>
+                                <td class="text-right">${{number_format($totals['tax_amount'],2)}}</td>
+                            </tr>
                         @if($totals['discount_amount'] != 0)
                             <tr class="discount">
                                 <td>Discount</td>
@@ -1309,7 +1313,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
 </div>
 
 @php endif; @endphp
-
+<span id="recalculateprice" style="display:none">recalculate</span>
 <!-- Modal cart -->
 <div id="cart_modal" class="modal  fade right" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
     <div class="modal-dialog" id="cart_modal_dialog" role="document">
@@ -1962,6 +1966,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                         $('#billing_method_mob').html(billing_method);
                                         $('.col-md-12.cart-total-mob .row div:nth-child(2) h6').text('$'+ (jsonData['totals'].base_subtotal).toFixed(2));
                                         $('.col-md-12.cart-total-mob .row div:nth-child(4) h6').text('$'+jsonData['totals'].shipping_amount);
+                                        $('.col-md-12.cart-total-mob .row div.tax-amount-mob h6').text(('$'+jsonData['totals'].tax_amount).replace('-',''));
                                         $('.col-md-12.cart-total-mob .row div.discount-amount-mob h6').text(('$'+jsonData['totals'].discount_amount).replace('-',''));
                                         $('.col-md-12.cart-total-mob .row div:nth-child(4)').css('display','block');
                                         $('.col-md-12.cart-total-mob .row div:nth-child(3)').css('display','block');
@@ -2095,9 +2100,16 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                 grandtotal = eval(data.total.grand_total) + eval(data.total.discount_amount);
                             }
                             $('.subtotal .discount').css({'display': 'table-row'});
+                             // Add tax for adding of coupan 
+                            if($("#pills-payment-tab").hasClass("active")){
+                                 $('.right-sec .subtotal tr.tax td.text-right').text('$'+(data.total.base_tax_amount).toFixed(2));
+                                grandtotal =eval(grandtotal)+eval(data.total.base_tax_amount);
+                            }
                             $('.total td.text-right h3 b').html('$' + (grandtotal).toFixed(2));
                             @php endif; @endphp
                         } else {
+                            $("#coupon_code").siblings("p").remove();
+                            $("#coupon_code").addClass("remove_coupan_code");
                             $('<p class="error" style="color:red">Oops! Invalid code.</p>').insertAfter('#coupon_code');
                         }
                         $('div.main-loader').css('display','none');
@@ -2161,6 +2173,11 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                             grandtotal = eval(data.total.grand_total) + eval(data.total.discount_amount);
                         }
                         $('.subtotal .discount').css({'display': 'none'});
+                        // Add tax for adding of coupan 
+                        if($("#pills-payment-tab").hasClass("active")){
+                            $('.right-sec .subtotal tr.tax td.text-right').text('$'+(data.total.base_tax_amount).toFixed(2));
+                                grandtotal =eval(grandtotal)+eval(data.total.base_tax_amount);
+                        }
                         $('.total td.text-right h3 b').html('$' + (grandtotal).toFixed(2));
                         // $('.subtotal tr.discount').hide();
                         $('.right-sec .dev-loader').remove();
@@ -2176,8 +2193,8 @@ if(isset($_SERVER['HTTP_REFERER'])) {
         });
         $('.form-group.state-select .select ul.select-options li').on('click', function () {
             var selected_state = $(this).text();
-            var regionId = $(this).rel();
-            // alert(selected_state + " - " + regionId);
+         //   var regionId = $(this).rel();
+            console.log(selected_state);
         })
     });
     $('form.existing_customer button.btn.btn-ansel.btn-block.mt-3').on('click', function () {
@@ -2458,6 +2475,8 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                 url: url,
                 data: data,
                 success: function (data) {
+                    console.log("newdata");
+                    console.log(data);
                     $('form.shippingmethodForm button.continue-to-shipping').removeClass('disabled').removeAttr('disabled');
                     $('#pills-shipping-method .shipping_method tbody tr').remove();
                     var jsonData = JSON.parse(JSON.stringify(data));
@@ -2530,6 +2549,8 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                     $('.main_top #pills-tab li:nth-child(3) a').removeClass('disabled').addClass('active');
                     $('#pills-tabContent #pills-customer-info').removeClass('show').removeClass('active');
                     $('#pills-tabContent #pills-shipping-method').addClass('show').addClass('active');
+                    $("#pills-payment-method").removeClass("show").removeClass("active");
+                    $('.tax').hide();
 
 
                     $('.shipping_method table tr td .custom-radio input').change(function () {
@@ -2570,12 +2591,50 @@ if(isset($_SERVER['HTTP_REFERER'])) {
         }
         return valid;
     });
+    // Click on the payment tab
+    // $("#pills-payment-tab").click(function(){
+
+    // });
+    // Remove tax on the other tabs
+    $("#pills-payment-tab, .edit-address, .edit-shipping, #pills-profile-tab, #pills-contact-tab, #recalculateprice").on('click',function(){
+        var url = '@php echo url('/').'/cartinfo'; @endphp';
+        $.ajax({
+            headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
+            type: "POST",
+            url: url,
+            success: function (jsonData) {
+                console.log(jsonData);
+               
+              subtotal=   jsonData['grand_total'];
+              $('.right-sec .total tr td.text-right h3 b').text('$'+(subtotal).toFixed(2));
+               discount_amount=   jsonData['base_discount_amount'];
+                 tax_amount=   jsonData['base_tax_amount'];
+                 ship_amount=  jsonData['base_shipping_amount'];
+                 subtotal=   jsonData['base_subtotal'];
+                grandtotal=   jsonData['base_grand_total'];
+                if($("#pills-payment-tab").hasClass("active")){ 
+                                $(".tax").show();
+                            }else{
+                                grandtotal =eval(grandtotal)-eval( jsonData['base_tax_amount']);
+                                $(".tax").hide();
+                            }
+                 $('.right-sec .subtotal tr.discount td.text-right').text('$'+(Math.abs(discount_amount)).toFixed(2));
+                 $('.right-sec .subtotal tr.tax td.text-right').text('$'+(tax_amount).toFixed(2));
+                 $('.right-sec .subtotal tr:first td.text-right').text('$'+(subtotal).toFixed(2));
+                $('.right-sec .subtotal tr.shipping-total td.text-right').text('$'+(ship_amount).toFixed(2));
+               $('.right-sec .total tr td.text-right h3 b').text('$'+(grandtotal).toFixed(2));
+                }
+            }); 
+            
+    });
+// Edit address    
     $('.edit-address').on('click', function () {
         $('.main_top #pills-tab li a').removeClass('active');
         $('.main_top #pills-tab li a#pills-profile-tab').removeClass('disabled').addClass('active');
         $('#pills-tabContent .tab-pane').removeClass('show').removeClass('active');
         $('#pills-tabContent #pills-customer-info').addClass('show').addClass('active');
     });
+// Edit shipping address
     $('.edit-shipping').on('click', function () {
         $('.main_top #pills-tab li a').removeClass('active');
         $('.main_top #pills-tab li a#pills-contact-tab').removeClass('disabled').addClass('active');
@@ -2650,8 +2709,10 @@ if(isset($_SERVER['HTTP_REFERER'])) {
             url: url,
             data: data,
             success: function (data) {
+                console.log(data);
                 $('#pills-shipping-method .continue-to-payment').removeClass('disabled').removeAttr('disabled');
                 var jsonData = JSON.parse(JSON.stringify(data));
+                console.log(jsonData);
                 /*$('#pills-payment-method .payment_method .credit_card_info.w-100').css({'display':'none'});
                 $('#pills-payment-method .payment_method .credit_card_form').css({'display':'none'});*/
                 var ship_cost = $('.shipping_method input[name=shipping-method]:checked').parent().parent().parent().find('td.text-right.text-muted').text();
@@ -2681,9 +2742,27 @@ if(isset($_SERVER['HTTP_REFERER'])) {
 
                     var grandtotal = eval(subtotal) + eval(shippingCost);
                 }
+                discount_amount=   jsonData['totals']['base_discount_amount'];
+                tax_amount=   jsonData['totals']['base_tax_amount'];
+                ship_amount=  jsonData['totals']['base_shipping_amount'];
+                if(ship_amount==0.00){
+                    ship_amount="Free"
+                }else{
+                    ship_amount=  '$'+(ship_amount).toFixed(2)
+                }
+                subtotal=   jsonData['totals']['base_subtotal'];
+                grandtotal=   jsonData['totals']['base_grand_total'];
+               
+                $('.right-sec .subtotal tr.discount td.text-right').text('$'+(Math.abs(discount_amount)).toFixed(2));
+                $('.right-sec .subtotal tr.tax td.text-right').text('$'+(tax_amount).toFixed(2));
+                $('.right-sec .subtotal tr:first td.text-right').text('$'+(subtotal).toFixed(2));
                 $('.right-sec .subtotal tr.shipping-total td.text-right').text(ship_amount);
                 $('.right-sec .total tr td.text-right h3 b').text('$'+(grandtotal).toFixed(2));
                 $('#pills-payment-method .payment_method table tbody tr').remove();
+                if(tax_amount > 0){
+                    console.log("show tax");
+                    $(".tax").show();
+                }
                 for (var i = 0; i < jsonData['payment_methods'].length; i++) {
                     var counter = jsonData['payment_methods'][i];
                     $('#pills-payment-method .payment_method table tbody').append('<tr><td><label class="custom-radio">' + counter['title'] + '<input name="payment-method" checked="checked" value="' + counter['code'] + '" type="radio" methodlabel="' + counter['title'] + '" required><span class="checkmark"></span></label></td></tr>');
@@ -2955,6 +3034,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                     var paymentmethodlabel = $('#pills-payment-method .payment_method input[name=payment-method]:checked').attr('methodlabel');
 
                                     var subtotal = $('.right-sec .subtotal tr:first-child td.text-right').html();
+                                    var taxtotal = $('.right-sec .subtotal tr.tax td.text-right').html();
                                     var total = $('.right-sec .total tr td.text-right h3 b').html();
                                     var shippingcost = $('.right-sec .subtotal tr.shipping-total td.text-right').html();
                                     var stripe_token = localStorage.getItem("stripe_token");
@@ -2978,6 +3058,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                         "shippingmethod": shipingMethodlabel,
                                         "paymethodlabel": paymentmethodlabel,
                                         "subtotal": subtotal,
+                                        "taxtotal":taxtotal,
                                         "shippingrate": shippingcost,
                                         "total": total,
                                         "cc_type":cc_type,
@@ -3394,6 +3475,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                         var shipingMethodlabel = $('#pills-shipping-method .shipping_method input[name=shipping-method]:checked').attr('methodlabel');
                                         var paymentmethodlabel = $('#pills-payment-method .payment_method input[name=payment-method]:checked').attr('methodlabel');
                                         var subtotal = $('.right-sec .subtotal tr:first-child td.text-right').html();
+                                        var taxtotal = $('.right-sec .subtotal tr.tax td.text-right').html();
                                         var total = $('.right-sec .total tr td.text-right h3 b').html();
                                         var shippingcost = $('.right-sec .subtotal tr.shipping-total td.text-right').html();
                                         var stripe_token = localStorage.getItem("stripe_token");
@@ -3421,6 +3503,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                             "shippingmethod": shipingMethodlabel,
                                             "paymethodlabel": paymentmethodlabel,
                                             "subtotal": subtotal,
+                                            "taxtotal": taxtotal,
                                             "shippingrate": shippingcost,
                                             "total": total,
                                             "cc_type":cc_type,
@@ -3867,6 +3950,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                     }
                     var subtotal = $('.right-sec .subtotal tr:first-child td.text-right').html();
                     var total = $('.right-sec .total tr td.text-right h3 b').html();
+                    var taxtotal = $('.right-sec .subtotal tr.tax td.text-right').html();
                     var shippingcost = $('.right-sec .subtotal tr.shipping-total td.text-right').html();
                     var data = {
                         "quote_id": quote_id,
@@ -3887,6 +3971,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                         "shippingmethod": shipingMethodlabel,
                         "paymethodlabel": paymentmethodlabel,
                         "subtotal": subtotal,
+                        "taxtotal":taxtotal,
                         "shippingrate": shippingcost,
                         "total": total,
                         "telephone": shippingTelephone
@@ -4294,6 +4379,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                         var paymentmethodlabel = $('#pills-payment-method .payment_method input[name=payment-method]:checked').attr('methodlabel');
                         var subtotal = $('.right-sec .subtotal tr:first-child td.text-right').html();
                         var total = $('.right-sec .total tr td.text-right h3 b').html();
+                        var taxtotal = $('.right-sec .subtotal tr.tax td.text-right').html();
                         var shippingcost = $('.right-sec .subtotal tr.shipping-total td.text-right').html();
                         var data = {
                             "quote_id": quote_id,
@@ -4319,6 +4405,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                             "shippingmethod": shipingMethodlabel,
                             "paymethodlabel": paymentmethodlabel,
                             "subtotal": subtotal,
+                            "taxtotal": taxtotal,
                             "shippingrate": shippingcost,
                             "total": total,
                             "shippingFirstname":shippingFirstname,
@@ -4652,11 +4739,14 @@ if(isset($_SERVER['HTTP_REFERER'])) {
     {{--window.location.href = "@php echo url('/'); @endphp";--}}
     {{--});--}}
     $(document).on('change', '.checkout.checkout-web .cart-items .row input.cartitemqty , #cart_modal .cart-items input.cartitemqty', function (event) {
+       console.log("this part is running");
         var qty = $(this).val();
+        console.log(qty);
         var cart_id = $(this).parent().parent().find('span.remove-item').attr('data-id');
         var item_id = $(this).parent().parent().find('span.remove-item').attr('data-cart-item');
         $(this).closest('.cart-items').find('.badge-light').text(qty);
         if(qty != '' && qty != 0 && !isNaN(qty)){
+            console.log("section1");
             if($('#coupon_code').val() != ''){
                 coupon_code = $('#coupon_code').val();
             } else{
@@ -4669,6 +4759,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                 url: url,
                 success: function (data) {
                     var jsonTotal = JSON.parse(JSON.stringify(data));
+                    console.log(jsonTotal);
                     //$('.right-sec .cart-items').remove();
                     $('.right-sec .total').html('');
                     //$('#cart_modal .cart-items').remove();
@@ -4679,13 +4770,17 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                         child = i+1;
                         qty += parseInt($('#cart_modal .modal-body .cart-items:nth-child('+ child +') .cartitemqty').val());
                     }
+                    //testing lines
                     $('.right-sec div.total').html('<table class="table m-0"><tbody><tr><td>Total:</td><td class="text-right"><h3><b>$'+ (jsonTotal.total).toFixed(2) +'</b></h3></td></tr></tbody></table>');
-                    $('.right-sec div.subtotal table tr:first-child td.text-right').text('$'+ (jsonTotal.total).toFixed(2));
-                    $('<div class="total"><div class="row"><div class="col-md-6 col-6 text-left"><h2>Subtotal:</h2></div><div class="col-md-6 col-6 text-right"><h2>$'+ (jsonTotal.total).toFixed(2) +'</h2></div></div></div>').insertAfter('#cart_modal .modal-body.p-0 .cart-items:last-child()');
+                    $('.right-sec div.subtotal table tr:first-child td.text-right').text('$'+ (jsonTotal.subtotal).toFixed(2));
+                    $('<div class="total"><div class="row"><div class="col-md-6 col-6 text-left"><h2>Subtotal:</h2></div><div class="col-md-6 col-6 text-right"><h2>$'+ (jsonTotal.subtotal).toFixed(2) +'</h2></div></div></div>').insertAfter('#cart_modal .modal-body.p-0 .cart-items:last-child()');
                     $('#mobile-step-2 .cart-total-mob .row div.col-6:nth-child(2) h6 , #mobile-step-1 .cart-total-mob .row div.col-6:nth-child(2) h6 ').html('$'+(jsonTotal.subtotal).toFixed(2));
                     $('#mobile-step-2 .cart-total-mob .row div.col-6:last-child() h2 , #mobile-step-1 .cart-total-mob .row div.col-6:last-child() h2').html('$'+(jsonTotal.total).toFixed(2));
+                    // mobile_tax
+                    console.log('mobile_tax_working');
+                  //  $('#mobile-step-2 .cart-total-mob .row div.col-6.tax-amount-mob h6 , #mobile-step-1 .cart-total-mob .row div.col-6.tax-amount-mob h6').html('$'+(jsonTotal.total).toFixed(2));
                     $('#mobile-step-2 .discount-text-mob , #mobile-step-1 .discount-text-mob , #mobile-step-2 .discount-amount-mob , #mobile-step-1 .discount-amount-mob').css('display','none');
-                    $('tr .discount').css('display','none');
+                    $('tr.discount').css('display','none');
                     $('.discount .text-right').text('-');
                     $('#coupon_code').val('');
                     $('.cancel_coupon').css('display','none');
@@ -4706,6 +4801,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                     if(address != '' && city != '' && postcode != ''){
                         if(!$('#pills-customer-info').hasClass('active')){
                             $('form.shippingmethodForm button.continue-to-shipping').trigger('click');
+                       console.log('triggering click on continue-to-shipping ');
                         }
                     }
                     @php endif; @endphp
@@ -4714,6 +4810,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                 dataType: 'json'
             });
         } else{
+            console.log("section2");
             var remove_item_index = $(this).parent().parent().parent().parent().parent().index();
             $('div.main-loader').css('display','block');
             if($('#coupon_code').val() != ''){
@@ -6183,7 +6280,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                                             shippingcountry = $('#add-address-modal #country').val();
                                         }
                                         console.log(order_id);
-                                        var string = '<div class="col-md-12 checkout checkout-web order-success"><div class="row"><div class="col-md-7 l-s"><div class="left-sec" id="order-success-step" style="display: block;"><div class="order-top-sec text-center"><img width="68px" src="{{ url('/') }}/public/images/success.png"><h1>We\'re on it!</h1><h2 id="customer-firstname">Thank you '+ billing_firstname +' for your purchase!</h2><h5 id="customer-email">A confirmation email has been sent to '+ email +'</h5><h6 id="customer-orderId">Order ID: '+ order_id +'</h6></div><div class="order-detail"><p>Please allow 1-3 days for your order to ship. Each plant is handpicked by our team and we like to ensure that we\'re getting you the fullest and freshest plant possible. We\'ll be sure to send you an email when your plant ships. </p><div class="col-md-12 return return-mobile"><div class="row"><div class="col col-12"><button type="button" class="btn btn-ansel btn-block continue-shopping m-auto">CONTINUE SHOPPING </button></div><div class="col col-12"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div></div></div></div><div class="col-md-12 ci"><div class="row"><h5>Customer Information</h5></div></div><div class="col-md-12 order-summary"><div class="row"><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-address"><li>Shipping Address</li><li>'+ shippingfirstname +' '+ shippinglastname +'</li><li>'+ shippingaddressline1 +'</li><li>'+ shippingcity +'  '+ shippingstate +'</li><li>'+ shippingpostcode +' United States </li><li>'+ shippingtelephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-billing-address"><li>Billing Address</li><li>'+ billing_firstname +' '+ billing_lastname +'</li><li>'+ billing_addressline1 +'</li><li>'+ billing_city +'  '+ billing_state +'</li><li>'+ billing_postcode +' United Stetes</li><li>'+ billing_telephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-method"><li>Shipping Method</li><li>'+ shipingMethodlabel +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-payment-method"><li>Payment Method</li>'+ paymentmethodlabel +'</ul></div></div></div><div class="col-md-12 return"><div class="row"><div class="col"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div><div class="col"><button type="button" class="btn btn-ansel float-right continue-shopping">CONTINUE SHOPPING</button></div></div></div></div></div><div class="col-md-5 r-s"></div></div></div>';
+                                        var string = '<div class="col-md-12 checkout checkout-web order-success"><div class="row"><div class="col-md-7 l-s"><div class="left-sec" id="order-success-step" style="display: block;"><div class="order-top-sec text-center"><img width="68px" src="{{ url('/') }}/public/images/success.png"><h1>We\'re on it!</h1><h2 id="customer-firstname">Thank you '+ billing_firstname +' for your purchase!</h2><h5 id="customer-email">A confirmation email has been sent to '+ email +'</h5><h6 id="customer-orderId">Order ID: '+ order_id +'</h6></div><div class="order-detail"><p>Please allow 2-4 days for your order to ship. Each plant is handpicked by our team and we like to ensure that we\'re getting you the fullest and freshest plant possible. We\'ll be sure to send you an email when your plant ships. </p><div class="col-md-12 return return-mobile"><div class="row"><div class="col col-12"><button type="button" class="btn btn-ansel btn-block continue-shopping m-auto">CONTINUE SHOPPING </button></div><div class="col col-12"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div></div></div></div><div class="col-md-12 ci"><div class="row"><h5>Customer Information</h5></div></div><div class="col-md-12 order-summary"><div class="row"><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-address"><li>Shipping Address</li><li>'+ shippingfirstname +' '+ shippinglastname +'</li><li>'+ shippingaddressline1 +'</li><li>'+ shippingcity +'  '+ shippingstate +'</li><li>'+ shippingpostcode +' United States </li><li>'+ shippingtelephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-billing-address"><li>Billing Address</li><li>'+ billing_firstname +' '+ billing_lastname +'</li><li>'+ billing_addressline1 +'</li><li>'+ billing_city +'  '+ billing_state +'</li><li>'+ billing_postcode +' United Stetes</li><li>'+ billing_telephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-method"><li>Shipping Method</li><li>'+ shipingMethodlabel +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-payment-method"><li>Payment Method</li>'+ paymentmethodlabel +'</ul></div></div></div><div class="col-md-12 return"><div class="row"><div class="col"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div><div class="col"><button type="button" class="btn btn-ansel float-right continue-shopping">CONTINUE SHOPPING</button></div></div></div></div></div><div class="col-md-5 r-s"></div></div></div>';
                                         $('#mobile-step-2').html(string);
                                         jQuery("html, body").animate({ scrollTop: 0 }, "fast");
                                         $('div.main-loader').css('display','none');
@@ -6370,7 +6467,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                             shippingtelephone = $('#add-address-modal #telephone').val();
                             shippingcountry = $('#add-address-modal #country').val();
                         }
-                        var string = '<div class="col-md-12 checkout checkout-web order-success"><div class="row"><div class="col-md-7 l-s"><div class="left-sec" id="order-success-step" style="display: block;"><div class="order-top-sec text-center"><img width="68px" src="{{ url('/') }}/public/images/success.png"><h1>We\'re on it!</h1><h2 id="customer-firstname">Thank you '+ billing_firstname +' for your purchase!</h2><h5 id="customer-email">A confirmation email has been sent to '+ email +'</h5><h6 id="customer-orderId">Order ID: '+ data +'</h6></div><div class="order-detail"><p>Please allow 1-3 days for your order to ship. Each plant is handpicked by our team and we like to ensure that we\'re getting you the fullest and freshest plant possible. We\'ll be sure to send you an email when your plant ships. </p><div class="col-md-12 return return-mobile"><div class="row"><div class="col col-12"><button type="button" class="btn btn-ansel btn-block continue-shopping m-auto">CONTINUE SHOPPING </button></div><div class="col col-12"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div></div></div></div><div class="col-md-12 ci"><div class="row"><h5>Customer Information</h5></div></div><div class="col-md-12 order-summary"><div class="row"><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-address"><li>Shipping Address</li><li>'+ shippingfirstname +' '+ shippinglastname +'</li><li>'+ shippingaddressline1 +'</li><li>'+ shippingcity +'  '+ shippingstate +'</li><li>'+ shippingpostcode +' United States </li><li>'+ shippingtelephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-billing-address"><li>Billing Address</li><li>'+ billing_firstname +' '+ billing_lastname +'</li><li>'+ billing_addressline1 +'</li><li>'+ billing_city +'  '+ billing_state +'</li><li>'+ billing_postcode +' United Stetes</li><li>'+ billing_telephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-method"><li>Shipping Method</li><li>'+ shipingMethodlabel +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-payment-method"><li>Payment Method</li>'+ paymentmethodlabel +'</ul></div></div></div><div class="col-md-12 return"><div class="row"><div class="col"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div><div class="col"><button type="button" class="btn btn-ansel float-right continue-shopping">CONTINUE SHOPPING</button></div></div></div></div></div><div class="col-md-5 r-s"></div></div></div>';
+                        var string = '<div class="col-md-12 checkout checkout-web order-success"><div class="row"><div class="col-md-7 l-s"><div class="left-sec" id="order-success-step" style="display: block;"><div class="order-top-sec text-center"><img width="68px" src="{{ url('/') }}/public/images/success.png"><h1>We\'re on it!</h1><h2 id="customer-firstname">Thank you '+ billing_firstname +' for your purchase!</h2><h5 id="customer-email">A confirmation email has been sent to '+ email +'</h5><h6 id="customer-orderId">Order ID: '+ data +'</h6></div><div class="order-detail"><p>Please allow 2-4 days for your order to ship. Each plant is handpicked by our team and we like to ensure that we\'re getting you the fullest and freshest plant possible. We\'ll be sure to send you an email when your plant ships. </p><div class="col-md-12 return return-mobile"><div class="row"><div class="col col-12"><button type="button" class="btn btn-ansel btn-block continue-shopping m-auto">CONTINUE SHOPPING </button></div><div class="col col-12"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div></div></div></div><div class="col-md-12 ci"><div class="row"><h5>Customer Information</h5></div></div><div class="col-md-12 order-summary"><div class="row"><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-address"><li>Shipping Address</li><li>'+ shippingfirstname +' '+ shippinglastname +'</li><li>'+ shippingaddressline1 +'</li><li>'+ shippingcity +'  '+ shippingstate +'</li><li>'+ shippingpostcode +' United States </li><li>'+ shippingtelephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-billing-address"><li>Billing Address</li><li>'+ billing_firstname +' '+ billing_lastname +'</li><li>'+ billing_addressline1 +'</li><li>'+ billing_city +'  '+ billing_state +'</li><li>'+ billing_postcode +' United Stetes</li><li>'+ billing_telephone +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-shipping-method"><li>Shipping Method</li><li>'+ shipingMethodlabel +'</li></ul></div><div class="col-md-6"><ul class="list-unstyled" id="order-payment-method"><li>Payment Method</li>'+ paymentmethodlabel +'</ul></div></div></div><div class="col-md-12 return"><div class="row"><div class="col"><h6><a href="{{ url('/') }}/help">Need Help?</a><a href="{{ url('/') }}/contact" target="_blank"><span class="ul"> Contact Us</span></a></h6></div><div class="col"><button type="button" class="btn btn-ansel float-right continue-shopping">CONTINUE SHOPPING</button></div></div></div></div></div><div class="col-md-5 r-s"></div></div></div>';
                         $('#mobile-step-2').html(string);
                         jQuery("html, body").animate({ scrollTop: 0 }, "fast");
                         $('div.main-loader').css('display','none');
@@ -6513,12 +6610,20 @@ if(isset($_SERVER['HTTP_REFERER'])) {
         $(this).parent().find('input.cartitemqty').trigger('change');
     });
     $(document).on('click','#mobile-step-1 .cart-total-mob button.btn.btn-ansel.btn-block',function(){
+        if($('.remove_coupan_code').length > 0){
+            $(".remove_coupan_code").val('');
+            $(".cc_text_step2").val('');
+            $(".remove_coupan_code").siblings('p.error').remove();
+            $(".remove_coupan_code").removeAttr('id');
+            $(".form-control").removeClass('remove_coupan_code');
+        }
+        console.log("checkout triggered");
         @php if(array_key_exists("quote_id",$session)): @endphp
         @php if($session['quote_id'] != '' ): @endphp
         @php $quote_id = $session['quote_id']; @endphp
         @php if(isset($session['customer_token'])): @endphp
         $('#mobile-step-2').css('display','block');
-        $('#mobile-step-1').css('display','none');
+        $('#mobile-step-1').css('display','none'); 
         @php else : @endphp
         $('#email-forms-mob').css('display','block');
         $('#mobile-step-1').css('display','none');
@@ -6726,6 +6831,7 @@ if(isset($_SERVER['HTTP_REFERER'])) {
                         $('.total td.text-right h3 b').html('$' + (grandtotal).toFixed(2));
                         @php endif; @endphp
                     } else {
+                        $("#coupon_code").siblings("p").remove();
                         $('<p class="error" style="color:red">Oops! Invalid code.</p>').insertAfter('#coupon_code');
                     }
                     $('div.main-loader').css('display','none');
